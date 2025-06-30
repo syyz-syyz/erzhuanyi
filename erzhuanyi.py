@@ -61,11 +61,22 @@ def main():
     
     if uploaded_file is not None:
         try:
-            # 读取 Excel 文件
-            df = pd.read_excel(uploaded_file)
+            # 获取所有表名
+            xls = pd.ExcelFile(uploaded_file)
+            sheet_names = xls.sheet_names
+            
+            # 选择工作表
+            selected_sheet = st.selectbox(
+                "选择要处理的工作表",
+                options=sheet_names,
+                index=0
+            )
+            
+            # 读取选中的工作表
+            df = xls.parse(selected_sheet)
             
             # 显示原始数据预览
-            st.subheader("原始数据预览")
+            st.subheader(f"工作表 '{selected_sheet}' 的数据预览")
             st.dataframe(df.head())
             
             # 检查是否有足够的列进行转换
@@ -115,7 +126,7 @@ def main():
                     st.download_button(
                         label="下载 Excel 文件",
                         data=output,
-                        file_name="转换结果.xlsx",
+                        file_name=f"{selected_sheet}_转换结果.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
         except Exception as e:
