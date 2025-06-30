@@ -2,38 +2,36 @@ import streamlit as st
 import pandas as pd
 import io
 
-def convert_2d_to_1d(df, fixed_columns_count):
+def convert_2d_to_1d(df, fixed_columns):
     """
     将二维 DataFrame 转换为一维格式
-    用户可指定固定列的数量，其余列将被转换为字段名和对应值
+    用户可指定固定列，其余列将被转换为字段名和对应值
     """
-    if df.empty or fixed_columns_count >= len(df.columns):
+    if df.empty or not fixed_columns or len(fixed_columns) >= len(df.columns):
         return pd.DataFrame()
-    
-    # 获取固定列的列名
-    fixed_columns = df.columns[:fixed_columns_count]
     
     # 创建一个空的 DataFrame 用于存储结果
     result_df = pd.DataFrame(columns=list(fixed_columns) + ['字段名称', '值内容'])
     
     # 计算总工作量
-    total_work = (len(df.columns) - fixed_columns_count) * len(df)
+    total_work = (len(df.columns) - len(fixed_columns)) * len(df)
     current_work = 0
     
     # 创建进度条
     progress_bar = st.progress(0)
     status_text = st.empty()
     
+    # 获取转换列的列名
+    convert_columns = [col for col in df.columns if col not in fixed_columns]
+    
     # 遍历每一个需要转换的字段
-    for col_idx in range(fixed_columns_count, len(df.columns)):
-        field_name = df.columns[col_idx]  # 字段名称为列标题
-        
+    for field_name in convert_columns:
         # 遍历每一行
         for _, row in df.iterrows():
             # 获取固定列的值
             fixed_values = [row[col] for col in fixed_columns]
             # 获取当前字段的值
-            value = row[col_idx]
+            value = row[field_name]
             
             # 添加到结果 DataFrame
             new_row = pd.DataFrame(
@@ -75,26 +73,29 @@ def main():
                 st.error("Excel 文件至少需要两列才能进行转换。")
                 return
                 
-            # 用户选择固定列的数量
-            fixed_columns_count = st.slider(
-                "选择固定列的数量（这些列将保持不变）",
-                min_value=1,
-                max_value=len(df.columns) - 1,
-                value=1,
-                help="前 N 列将作为固定列，其余列将被转换为字段名和值"
+            # 用户选择固定列
+            fixed_columns = st.multiselect(
+                "选择固定列（这些列将保持不变）",
+                options=df.columns.tolist(),
+                default=[df.columns[0]] if len(df.columns) > 0 else [],
+                help="这些列将作为固定列，其余列将被转换为字段名和值"
             )
+            
+            # 确保至少选择了一列
+            if not fixed_columns:
+                st.error("请至少选择一列作为固定列。")
+                return
             
             # 显示固定列和转换列的预览
             st.subheader("列配置预览")
-            fixed_cols = df.columns[:fixed_columns_count].tolist()
-            convert_cols = df.columns[fixed_columns_count:].tolist()
-            st.write(f"**固定列** ({len(fixed_cols)}): {', '.join(fixed_cols)}")
+            convert_cols = [col for col in df.columns if col not in fixed_columns]
+            st.write(f"**固定列** ({len(fixed_columns)}): {', '.join(fixed_columns)}")
             st.write(f"**转换列** ({len(convert_cols)}): {', '.join(convert_cols)}")
             
             # 执行转换
             if st.button("开始转换"):
                 st.subheader("正在转换数据...")
-                converted_df = convert_2d_to_1d(df, fixed_columns_count)
+                converted_df = convert_2d_to_1d(df, fixed_columns)
                 
                 # 显示转换后的数据预览
                 st.subheader("转换后的数据预览")
