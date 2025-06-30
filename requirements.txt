@@ -1,0 +1,3 @@
+treamlit>=1.10.0
+pandas>=1.4.0
+openpyxl>=3.0.9
